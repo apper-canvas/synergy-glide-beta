@@ -1,59 +1,180 @@
-import resourcesData from "@/services/mockData/companyResources.json";
-import usersData from "@/services/mockData/users.json";
+import { toast } from "react-toastify";
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const { ApperClient } = window.ApperSDK;
+const apperClient = new ApperClient({
+  apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+  apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+});
 
 const resourceService = {
   getAll: async () => {
-    await delay(300);
-    return resourcesData.map(resource => ({
-      ...resource,
-      uploader: usersData.find(u => u.Id === resource.uploaded_by)
-    }));
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "title_c"}},
+          {"field": {"Name": "category_c"}},
+          {"field": {"Name": "file_type_c"}},
+          {"field": {"Name": "file_size_c"}},
+          {"field": {"Name": "description_c"}},
+          {"field": {"Name": "created_at_c"}},
+          {"field": {"Name": "updated_at_c"}},
+          {"field": {"name": "uploaded_by_c"}, "referenceField": {"field": {"Name": "name_c"}}}
+        ]
+      };
+      
+      const response = await apperClient.fetchRecords('company_resource_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return [];
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error("Error fetching resources:", error?.response?.data?.message || error);
+      toast.error("Failed to fetch resources");
+      return [];
+    }
   },
   
   getById: async (id) => {
-    await delay(200);
-    const resource = resourcesData.find(r => r.Id === parseInt(id));
-    if (!resource) throw new Error("Resource not found");
-    return {
-      ...resource,
-      uploader: usersData.find(u => u.Id === resource.uploaded_by)
-    };
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "title_c"}},
+          {"field": {"Name": "category_c"}},
+          {"field": {"Name": "file_type_c"}},
+          {"field": {"Name": "file_size_c"}},
+          {"field": {"Name": "description_c"}},
+          {"field": {"Name": "created_at_c"}},
+          {"field": {"Name": "updated_at_c"}},
+          {"field": {"name": "uploaded_by_c"}, "referenceField": {"field": {"Name": "name_c"}}}
+        ]
+      };
+      
+      const response = await apperClient.getRecordById('company_resource_c', parseInt(id), params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching resource ${id}:`, error?.response?.data?.message || error);
+      toast.error("Failed to fetch resource");
+      return null;
+    }
   },
   
   getByCategory: async (category) => {
-    await delay(250);
-    return resourcesData
-      .filter(r => r.category === category)
-      .map(resource => ({
-        ...resource,
-        uploader: usersData.find(u => u.Id === resource.uploaded_by)
-      }));
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "title_c"}},
+          {"field": {"Name": "category_c"}},
+          {"field": {"Name": "file_type_c"}},
+          {"field": {"Name": "file_size_c"}},
+          {"field": {"Name": "description_c"}},
+          {"field": {"Name": "created_at_c"}},
+          {"field": {"Name": "updated_at_c"}},
+          {"field": {"name": "uploaded_by_c"}, "referenceField": {"field": {"Name": "name_c"}}}
+        ],
+        where: [{"FieldName": "category_c", "Operator": "EqualTo", "Values": [category]}]
+      };
+      
+      const response = await apperClient.fetchRecords('company_resource_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return [];
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error("Error fetching resources by category:", error?.response?.data?.message || error);
+      toast.error("Failed to fetch resources");
+      return [];
+    }
   },
   
   create: async (resourceData) => {
-    await delay(500);
-    const maxId = Math.max(...resourcesData.map(r => r.Id), 0);
-    const newResource = {
-      Id: maxId + 1,
-      ...resourceData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    resourcesData.push(newResource);
-    return {
-      ...newResource,
-      uploader: usersData.find(u => u.Id === newResource.uploaded_by)
-    };
+    try {
+      const params = {
+        records: [{
+          title_c: resourceData.title_c,
+          category_c: resourceData.category_c,
+          file_type_c: resourceData.file_type_c,
+          file_size_c: resourceData.file_size_c,
+          description_c: resourceData.description_c,
+          uploaded_by_c: parseInt(resourceData.uploaded_by_c),
+          created_at_c: new Date().toISOString(),
+          updated_at_c: new Date().toISOString()
+        }]
+      };
+      
+      const response = await apperClient.createRecord('company_resource_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to create resource:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return null;
+        }
+        return response.results[0].data;
+      }
+    } catch (error) {
+      console.error("Error creating resource:", error?.response?.data?.message || error);
+      toast.error("Failed to create resource");
+      return null;
+    }
   },
   
   delete: async (id) => {
-    await delay(300);
-    const index = resourcesData.findIndex(r => r.Id === parseInt(id));
-    if (index === -1) throw new Error("Resource not found");
-    const deleted = resourcesData.splice(index, 1)[0];
-    return { ...deleted };
+    try {
+      const params = {
+        RecordIds: [parseInt(id)]
+      };
+      
+      const response = await apperClient.deleteRecord('company_resource_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return false;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to delete resource:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return false;
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error("Error deleting resource:", error?.response?.data?.message || error);
+      toast.error("Failed to delete resource");
+      return false;
+    }
   }
 };
 

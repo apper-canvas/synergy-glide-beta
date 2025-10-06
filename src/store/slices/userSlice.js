@@ -1,29 +1,29 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  currentUser: {
-    Id: 1,
-    name: "Sarah Johnson",
-    email: "sarah.johnson@synerghub.com",
-    role: "Administrator",
-    avatar_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
-    job_title: "Chief Technology Officer",
-    department: "Technology",
-  },
+  currentUser: null,
+  isAuthenticated: false,
 };
 
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    setCurrentUser: (state, action) => {
-      state.currentUser = action.payload;
+    setUser: (state, action) => {
+      state.currentUser = JSON.parse(JSON.stringify(action.payload));
+      state.isAuthenticated = !!action.payload;
+    },
+    clearUser: (state) => {
+      state.currentUser = null;
+      state.isAuthenticated = false;
     },
     updateUserRole: (state, action) => {
-      state.currentUser.role = action.payload;
+      if (state.currentUser) {
+        state.currentUser.role = action.payload;
+      }
     },
   },
 });
 
-export const { setCurrentUser, updateUserRole } = userSlice.actions;
+export const { setUser, clearUser, updateUserRole } = userSlice.actions;
 export default userSlice.reducer;

@@ -1,15 +1,17 @@
-import { useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useContext, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AuthContext } from "@/App";
 import ApperIcon from "@/components/ApperIcon";
+import RoleBadge from "@/components/molecules/RoleBadge";
 import Breadcrumb from "@/components/molecules/Breadcrumb";
 import Dropdown from "@/components/molecules/Dropdown";
-import RoleBadge from "@/components/molecules/RoleBadge";
 import { updateUserRole } from "@/store/slices/userSlice";
 import { ROLES } from "@/utils/permissions";
 
 const Header = ({ onMenuClick }) => {
   const dispatch = useDispatch();
   const { currentUser } = useSelector(state => state.user);
+  const { logout } = useContext(AuthContext);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   
   const handleRoleChange = (role) => {
@@ -18,7 +20,7 @@ const Header = ({ onMenuClick }) => {
   };
   
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
+<header className="sticky top-0 z-30 bg-white border-b border-slate-200">
       <div className="flex items-center justify-between px-4 lg:px-6 h-16">
         <div className="flex items-center gap-4">
           <button
@@ -43,10 +45,18 @@ const Header = ({ onMenuClick }) => {
               onClick={() => setShowRoleSelector(!showRoleSelector)}
               className="flex items-center gap-1 hover:opacity-80 transition-opacity"
             >
-              <RoleBadge role={currentUser?.role} size="sm" />
+              <RoleBadge role={currentUser?.role_c} size="sm" />
               <ApperIcon name="ChevronDown" size={14} className="text-slate-400" />
             </button>
           </div>
+          
+          <button
+            onClick={logout}
+            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            title="Logout"
+          >
+            <ApperIcon name="LogOut" size={20} />
+          </button>
           
           {showRoleSelector && (
             <div className="absolute top-16 right-4 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
@@ -62,7 +72,7 @@ const Header = ({ onMenuClick }) => {
                   className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 transition-colors flex items-center justify-between"
                 >
                   <span className="text-slate-700">{role}</span>
-                  {currentUser?.role === role && (
+                  {currentUser?.role_c === role && (
                     <ApperIcon name="Check" size={16} className="text-primary-600" />
                   )}
                 </button>

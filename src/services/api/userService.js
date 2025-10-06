@@ -1,47 +1,185 @@
-import usersData from "@/services/mockData/users.json";
+import { toast } from "react-toastify";
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const { ApperClient } = window.ApperSDK;
+const apperClient = new ApperClient({
+  apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+  apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+});
 
 const userService = {
   getAll: async () => {
-    await delay(300);
-    return [...usersData];
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "name_c"}},
+          {"field": {"Name": "email_c"}},
+          {"field": {"Name": "role_c"}},
+          {"field": {"Name": "avatar_url_c"}},
+          {"field": {"Name": "job_title_c"}},
+          {"field": {"Name": "department_c"}},
+          {"field": {"Name": "last_login_c"}}
+        ]
+      };
+      
+      const response = await apperClient.fetchRecords('user_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return [];
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error("Error fetching users:", error?.response?.data?.message || error);
+      toast.error("Failed to fetch users");
+      return [];
+    }
   },
   
   getById: async (id) => {
-    await delay(200);
-    const user = usersData.find(u => u.Id === parseInt(id));
-    if (!user) throw new Error("User not found");
-    return { ...user };
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "name_c"}},
+          {"field": {"Name": "email_c"}},
+          {"field": {"Name": "role_c"}},
+          {"field": {"Name": "avatar_url_c"}},
+          {"field": {"Name": "job_title_c"}},
+          {"field": {"Name": "department_c"}},
+          {"field": {"Name": "last_login_c"}}
+        ]
+      };
+      
+      const response = await apperClient.getRecordById('user_c', parseInt(id), params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching user ${id}:`, error?.response?.data?.message || error);
+      toast.error("Failed to fetch user");
+      return null;
+    }
   },
   
   create: async (userData) => {
-    await delay(400);
-    const maxId = Math.max(...usersData.map(u => u.Id), 0);
-    const newUser = {
-      Id: maxId + 1,
-      ...userData,
-      created_at: new Date().toISOString(),
-      last_login: null
-    };
-    usersData.push(newUser);
-    return { ...newUser };
+    try {
+      const params = {
+        records: [{
+          name_c: userData.name_c,
+          email_c: userData.email_c,
+          role_c: userData.role_c,
+          avatar_url_c: userData.avatar_url_c,
+          job_title_c: userData.job_title_c,
+          department_c: userData.department_c,
+          last_login_c: userData.last_login_c
+        }]
+      };
+      
+      const response = await apperClient.createRecord('user_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to create user:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return null;
+        }
+        return response.results[0].data;
+      }
+    } catch (error) {
+      console.error("Error creating user:", error?.response?.data?.message || error);
+      toast.error("Failed to create user");
+      return null;
+    }
   },
   
   update: async (id, userData) => {
-    await delay(400);
-    const index = usersData.findIndex(u => u.Id === parseInt(id));
-    if (index === -1) throw new Error("User not found");
-    usersData[index] = { ...usersData[index], ...userData };
-    return { ...usersData[index] };
+    try {
+      const params = {
+        records: [{
+          Id: parseInt(id),
+          name_c: userData.name_c,
+          email_c: userData.email_c,
+          role_c: userData.role_c,
+          avatar_url_c: userData.avatar_url_c,
+          job_title_c: userData.job_title_c,
+          department_c: userData.department_c,
+          last_login_c: userData.last_login_c
+        }]
+      };
+      
+      const response = await apperClient.updateRecord('user_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to update user:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return null;
+        }
+        return response.results[0].data;
+      }
+    } catch (error) {
+      console.error("Error updating user:", error?.response?.data?.message || error);
+      toast.error("Failed to update user");
+      return null;
+    }
   },
   
   delete: async (id) => {
-    await delay(300);
-    const index = usersData.findIndex(u => u.Id === parseInt(id));
-    if (index === -1) throw new Error("User not found");
-    const deleted = usersData.splice(index, 1)[0];
-    return { ...deleted };
+    try {
+      const params = {
+        RecordIds: [parseInt(id)]
+      };
+      
+      const response = await apperClient.deleteRecord('user_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return false;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to delete user:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return false;
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error?.response?.data?.message || error);
+      toast.error("Failed to delete user");
+      return false;
+    }
   }
 };
 

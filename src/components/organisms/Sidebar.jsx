@@ -1,11 +1,14 @@
 import { NavLink } from "react-router-dom";
 import { useSelector } from "react-redux";
+import React, { useContext } from "react";
 import ApperIcon from "@/components/ApperIcon";
 import { cn } from "@/utils/cn";
 import { canManageUsers } from "@/utils/permissions";
+import { AuthContext } from "@/contexts/AuthContext";
 
 const Sidebar = ({ isMobileOpen, onClose }) => {
-  const { currentUser } = useSelector(state => state.user);
+const { currentUser } = useSelector(state => state.user);
+  const { logout } = useContext(AuthContext);
   
   const navItems = [
     { to: "/dashboard", icon: "LayoutDashboard", label: "Dashboard" },
@@ -16,7 +19,7 @@ const Sidebar = ({ isMobileOpen, onClose }) => {
     { to: "/support", icon: "HelpCircle", label: "Support" },
   ];
   
-  if (canManageUsers(currentUser?.role)) {
+if (canManageUsers(currentUser?.role_c)) {
     navItems.push({ to: "/admin", icon: "Settings", label: "Admin" });
   }
   
@@ -83,18 +86,25 @@ const Sidebar = ({ isMobileOpen, onClose }) => {
               className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-semibold">
-                {currentUser?.name?.charAt(0)}
+{currentUser?.name_c?.charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-900 truncate">
-                  {currentUser?.name}
+                  {currentUser?.name_c}
                 </p>
                 <p className="text-xs text-slate-500 truncate">
-                  {currentUser?.role}
-                </p>
-              </div>
-            </NavLink>
-          </div>
+{currentUser?.role_c}
+              </p>
+            </div>
+          </NavLink>
+          <button
+            onClick={logout}
+            className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          >
+            <ApperIcon name="LogOut" size={20} />
+            <span className="text-sm font-medium">Logout</span>
+          </button>
+        </div>
         </div>
       </aside>
       
@@ -121,18 +131,25 @@ const Sidebar = ({ isMobileOpen, onClose }) => {
             className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-semibold">
-              {currentUser?.name?.charAt(0)}
+{currentUser?.name_c?.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">
-                {currentUser?.name}
+                {currentUser?.name_c}
               </p>
-              <p className="text-xs text-slate-500 truncate">
-                {currentUser?.role}
-              </p>
-            </div>
-          </NavLink>
-        </div>
+{currentUser?.role_c}
+            </p>
+          </div>
+        </NavLink>
+        <button
+          onClick={logout}
+          className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+        >
+          <ApperIcon name="LogOut" size={20} />
+          <span className="text-sm font-medium">Logout</span>
+        </button>
+      </div>
+    </aside>
       </aside>
     </>
   );

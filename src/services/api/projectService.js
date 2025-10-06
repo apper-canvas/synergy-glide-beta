@@ -1,75 +1,235 @@
-import projectsData from "@/services/mockData/projects.json";
-import usersData from "@/services/mockData/users.json";
+import { toast } from "react-toastify";
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const { ApperClient } = window.ApperSDK;
+const apperClient = new ApperClient({
+  apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+  apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+});
 
 const projectService = {
   getAll: async () => {
-    await delay(350);
-    return projectsData.map(project => ({
-      ...project,
-      members: usersData.filter(user => project.members.includes(user.Id))
-    }));
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "name_c"}},
+          {"field": {"Name": "description_c"}},
+          {"field": {"Name": "status_c"}},
+          {"field": {"Name": "start_date_c"}},
+          {"field": {"Name": "end_date_c"}},
+          {"field": {"Name": "progress_c"}},
+          {"field": {"Name": "members_c"}},
+          {"field": {"Name": "created_at_c"}},
+          {"field": {"Name": "updated_at_c"}},
+          {"field": {"name": "created_by_c"}, "referenceField": {"field": {"Name": "name_c"}}}
+        ]
+      };
+      
+      const response = await apperClient.fetchRecords('project_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return [];
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error("Error fetching projects:", error?.response?.data?.message || error);
+      toast.error("Failed to fetch projects");
+      return [];
+    }
   },
   
   getById: async (id) => {
-    await delay(250);
-    const project = projectsData.find(p => p.Id === parseInt(id));
-    if (!project) throw new Error("Project not found");
-    return {
-      ...project,
-      members: usersData.filter(user => project.members.includes(user.Id))
-    };
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "name_c"}},
+          {"field": {"Name": "description_c"}},
+          {"field": {"Name": "status_c"}},
+          {"field": {"Name": "start_date_c"}},
+          {"field": {"Name": "end_date_c"}},
+          {"field": {"Name": "progress_c"}},
+          {"field": {"Name": "members_c"}},
+          {"field": {"Name": "created_at_c"}},
+          {"field": {"Name": "updated_at_c"}},
+          {"field": {"name": "created_by_c"}, "referenceField": {"field": {"Name": "name_c"}}}
+        ]
+      };
+      
+      const response = await apperClient.getRecordById('project_c', parseInt(id), params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching project ${id}:`, error?.response?.data?.message || error);
+      toast.error("Failed to fetch project");
+      return null;
+    }
   },
   
   create: async (projectData) => {
-    await delay(450);
-    const maxId = Math.max(...projectsData.map(p => p.Id), 0);
-    const newProject = {
-      Id: maxId + 1,
-      ...projectData,
-      progress: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    projectsData.push(newProject);
-    return {
-      ...newProject,
-      members: usersData.filter(user => newProject.members?.includes(user.Id))
-    };
+    try {
+      const params = {
+        records: [{
+          name_c: projectData.name_c,
+          description_c: projectData.description_c,
+          status_c: projectData.status_c,
+          start_date_c: projectData.start_date_c,
+          end_date_c: projectData.end_date_c,
+          progress_c: 0,
+          members_c: Array.isArray(projectData.members_c) ? projectData.members_c.join(',') : projectData.members_c || '',
+          created_by_c: parseInt(projectData.created_by_c),
+          created_at_c: new Date().toISOString(),
+          updated_at_c: new Date().toISOString()
+        }]
+      };
+      
+      const response = await apperClient.createRecord('project_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to create project:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return null;
+        }
+        return response.results[0].data;
+      }
+    } catch (error) {
+      console.error("Error creating project:", error?.response?.data?.message || error);
+      toast.error("Failed to create project");
+      return null;
+    }
   },
   
   update: async (id, projectData) => {
-    await delay(400);
-    const index = projectsData.findIndex(p => p.Id === parseInt(id));
-    if (index === -1) throw new Error("Project not found");
-    projectsData[index] = {
-      ...projectsData[index],
-      ...projectData,
-      updated_at: new Date().toISOString()
-    };
-    return {
-      ...projectsData[index],
-      members: usersData.filter(user => projectsData[index].members?.includes(user.Id))
-    };
+    try {
+      const updatePayload = {
+        Id: parseInt(id)
+      };
+      
+      if (projectData.name_c !== undefined) updatePayload.name_c = projectData.name_c;
+      if (projectData.description_c !== undefined) updatePayload.description_c = projectData.description_c;
+      if (projectData.status_c !== undefined) updatePayload.status_c = projectData.status_c;
+      if (projectData.start_date_c !== undefined) updatePayload.start_date_c = projectData.start_date_c;
+      if (projectData.end_date_c !== undefined) updatePayload.end_date_c = projectData.end_date_c;
+      if (projectData.progress_c !== undefined) updatePayload.progress_c = projectData.progress_c;
+      if (projectData.members_c !== undefined) {
+        updatePayload.members_c = Array.isArray(projectData.members_c) ? projectData.members_c.join(',') : projectData.members_c;
+      }
+      updatePayload.updated_at_c = new Date().toISOString();
+      
+      const params = {
+        records: [updatePayload]
+      };
+      
+      const response = await apperClient.updateRecord('project_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return null;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to update project:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return null;
+        }
+        return response.results[0].data;
+      }
+    } catch (error) {
+      console.error("Error updating project:", error?.response?.data?.message || error);
+      toast.error("Failed to update project");
+      return null;
+    }
   },
   
   delete: async (id) => {
-    await delay(350);
-    const index = projectsData.findIndex(p => p.Id === parseInt(id));
-    if (index === -1) throw new Error("Project not found");
-    const deleted = projectsData.splice(index, 1)[0];
-    return { ...deleted };
+    try {
+      const params = {
+        RecordIds: [parseInt(id)]
+      };
+      
+      const response = await apperClient.deleteRecord('project_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return false;
+      }
+      
+      if (response.results) {
+        const failed = response.results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.error(`Failed to delete project:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+          return false;
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error("Error deleting project:", error?.response?.data?.message || error);
+      toast.error("Failed to delete project");
+      return false;
+    }
   },
   
   getByStatus: async (status) => {
-    await delay(300);
-    return projectsData
-      .filter(p => p.status === status)
-      .map(project => ({
-        ...project,
-        members: usersData.filter(user => project.members.includes(user.Id))
-      }));
+    try {
+      const params = {
+        fields: [
+          {"field": {"Name": "Id"}},
+          {"field": {"Name": "name_c"}},
+          {"field": {"Name": "description_c"}},
+          {"field": {"Name": "status_c"}},
+          {"field": {"Name": "start_date_c"}},
+          {"field": {"Name": "end_date_c"}},
+          {"field": {"Name": "progress_c"}},
+          {"field": {"Name": "members_c"}},
+          {"field": {"Name": "created_at_c"}},
+          {"field": {"Name": "updated_at_c"}},
+          {"field": {"name": "created_by_c"}, "referenceField": {"field": {"Name": "name_c"}}}
+        ],
+        where: [{"FieldName": "status_c", "Operator": "EqualTo", "Values": [status]}]
+      };
+      
+      const response = await apperClient.fetchRecords('project_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return [];
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error("Error fetching projects by status:", error?.response?.data?.message || error);
+      toast.error("Failed to fetch projects");
+      return [];
+    }
   }
 };
 
