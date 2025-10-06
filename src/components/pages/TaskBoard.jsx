@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import Select from "@/components/atoms/Select";
-import StatusBadge from "@/components/atoms/StatusBadge";
+import StatusBadge from "@/components/molecules/StatusBadge";
 import TaskCard from "@/components/organisms/TaskCard";
 import TaskDetailModal from "@/components/organisms/TaskDetailModal";
 import Loading from "@/components/ui/Loading";
