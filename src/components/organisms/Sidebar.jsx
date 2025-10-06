@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useSelector } from "react-redux";
 import React, { useContext } from "react";
-import { AuthContext } from "@/contexts/AuthContext";
+import { AuthContext } from "@/App";
 import ApperIcon from "@/components/ApperIcon";
 import { cn } from "@/utils/cn";
 import { canManageUsers } from "@/utils/permissions";
