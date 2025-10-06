@@ -1,10 +1,10 @@
 import { NavLink } from "react-router-dom";
 import { useSelector } from "react-redux";
 import React, { useContext } from "react";
+import { AuthContext } from "@/contexts/AuthContext";
 import ApperIcon from "@/components/ApperIcon";
 import { cn } from "@/utils/cn";
 import { canManageUsers } from "@/utils/permissions";
-import { AuthContext } from "@/contexts/AuthContext";
 
 const Sidebar = ({ isMobileOpen, onClose }) => {
 const { currentUser } = useSelector(state => state.user);
@@ -134,23 +134,23 @@ if (canManageUsers(currentUser?.role_c)) {
 {currentUser?.name_c?.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
+<p className="text-sm font-medium text-slate-900 truncate">
                 {currentUser?.name_c}
               </p>
-{currentUser?.role_c}
-            </p>
-          </div>
+              <p className="text-xs text-slate-500 truncate">
+                {currentUser?.role_c}
+              </p>
+            </div>
         </NavLink>
         <button
           onClick={logout}
           className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
         >
           <ApperIcon name="LogOut" size={20} />
-          <span className="text-sm font-medium">Logout</span>
+<span className="text-sm font-medium">Logout</span>
         </button>
       </div>
     </aside>
-      </aside>
     </>
   );
 };
