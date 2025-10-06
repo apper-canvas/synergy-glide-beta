@@ -1,0 +1,90 @@
+[
+  {
+    "Id": 1,
+    "title": "Employee Handbook 2024",
+    "category": "Policies",
+    "file_type": "PDF",
+    "file_size": 2456789,
+    "description": "Comprehensive guide to company policies and procedures",
+    "uploaded_by": 3,
+    "created_at": "2024-01-01T10:00:00Z",
+    "updated_at": "2024-01-01T10:00:00Z"
+  },
+  {
+    "Id": 2,
+    "title": "Project Proposal Template",
+    "category": "Templates",
+    "file_type": "DOCX",
+    "file_size": 156789,
+    "description": "Standard template for project proposals",
+    "uploaded_by": 3,
+    "created_at": "2023-12-15T10:00:00Z",
+    "updated_at": "2023-12-15T10:00:00Z"
+  },
+  {
+    "Id": 3,
+    "title": "Company Logo Package",
+    "category": "Branding",
+    "file_type": "ZIP",
+    "file_size": 8456789,
+    "description": "Logo files in various formats and color variations",
+    "uploaded_by": 1,
+    "created_at": "2023-11-20T10:00:00Z",
+    "updated_at": "2023-11-20T10:00:00Z"
+  },
+  {
+    "Id": 4,
+    "title": "Git Workflow Guide",
+    "category": "Guides",
+    "file_type": "PDF",
+    "file_size": 1234567,
+    "description": "Best practices for version control and Git workflows",
+    "uploaded_by": 1,
+    "created_at": "2023-12-01T10:00:00Z",
+    "updated_at": "2023-12-01T10:00:00Z"
+  },
+  {
+    "Id": 5,
+    "title": "Time Off Request Form",
+    "category": "Forms",
+    "file_type": "XLSX",
+    "file_size": 45678,
+    "description": "Template for requesting time off",
+    "uploaded_by": 3,
+    "created_at": "2024-01-05T10:00:00Z",
+    "updated_at": "2024-01-05T10:00:00Z"
+  },
+  {
+    "Id": 6,
+    "title": "Security Policy",
+    "category": "Policies",
+    "file_type": "PDF",
+    "file_size": 1876543,
+    "description": "Information security policies and guidelines",
+    "uploaded_by": 1,
+    "created_at": "2023-12-10T10:00:00Z",
+    "updated_at": "2023-12-10T10:00:00Z"
+  },
+  {
+    "Id": 7,
+    "title": "Meeting Notes Template",
+    "category": "Templates",
+    "file_type": "DOCX",
+    "file_size": 98765,
+    "description": "Standardized format for meeting documentation",
+    "uploaded_by": 3,
+    "created_at": "2023-11-25T10:00:00Z",
+    "updated_at": "2023-11-25T10:00:00Z"
+  },
+  {
+    "Id": 8,
+    "title": "Brand Guidelines 2024",
+    "category": "Branding",
+    "file_type": "PDF",
+    "file_size": 5678901,
+    "description": "Complete brand identity and usage guidelines",
+    "uploaded_by": 1,
+    "created_at": "2024-01-02T10:00:00Z",
+    "updated_at": "2024-01-02T10:00:00Z"
+  }
+]

@@ -1,0 +1,233 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import ProjectCard from "@/components/organisms/ProjectCard";
+import Button from "@/components/atoms/Button";
+import SearchBar from "@/components/molecules/SearchBar";
+import Select from "@/components/atoms/Select";
+import Modal from "@/components/molecules/Modal";
+import FormField from "@/components/molecules/FormField";
+import Loading from "@/components/ui/Loading";
+import Error from "@/components/ui/Error";
+import Empty from "@/components/ui/Empty";
+import { canManageProjects } from "@/utils/permissions";
+import projectService from "@/services/api/projectService";
+
+const ProjectsList = () => {
+  const navigate = useNavigate();
+  const { currentUser } = useSelector(state => state.user);
+  const [projects, setProjects] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    status: "Planning",
+    start_date: "",
+    end_date: "",
+    members: []
+  });
+  
+  const loadProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await projectService.getAll();
+      setProjects(data);
+      setFilteredProjects(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    loadProjects();
+  }, []);
+  
+  useEffect(() => {
+    let filtered = projects;
+    
+    if (searchQuery) {
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(p => p.status === statusFilter);
+    }
+    
+    setFilteredProjects(filtered);
+  }, [searchQuery, statusFilter, projects]);
+  
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.start_date || !formData.end_date) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    try {
+      setCreating(true);
+      await projectService.create({
+        ...formData,
+        created_by: currentUser?.Id
+      });
+      toast.success("Project created successfully");
+      setShowCreateModal(false);
+      setFormData({
+        name: "",
+        description: "",
+        status: "Planning",
+        start_date: "",
+        end_date: "",
+        members: []
+      });
+      loadProjects();
+    } catch (error) {
+      toast.error("Failed to create project");
+    } finally {
+      setCreating(false);
+    }
+  };
+  
+  if (loading) return <Loading message="Loading projects..." />;
+  if (error) return <Error message={error} onRetry={loadProjects} />;
+  
+  const canCreate = canManageProjects(currentUser?.role);
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Projects</h1>
+          <p className="text-slate-600 mt-1">{filteredProjects.length} projects found</p>
+        </div>
+        
+        {canCreate && (
+          <Button icon="Plus" onClick={() => setShowCreateModal(true)}>
+            New Project
+          </Button>
+        )}
+      </div>
+      
+      <div className="flex flex-col sm:flex-row gap-4">
+        <SearchBar
+          placeholder="Search projects..."
+          onSearch={setSearchQuery}
+          className="flex-1"
+        />
+        
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="w-full sm:w-48"
+        >
+          <option value="all">All Status</option>
+          <option value="Planning">Planning</option>
+          <option value="Active">Active</option>
+          <option value="On Hold">On Hold</option>
+          <option value="Completed">Completed</option>
+        </Select>
+      </div>
+      
+      {filteredProjects.length === 0 ? (
+        <Empty
+          icon="Briefcase"
+          title="No projects found"
+          message={canCreate ? "Get started by creating your first project." : "No projects match your search criteria."}
+          actionLabel={canCreate ? "Create Project" : undefined}
+          onAction={canCreate ? () => setShowCreateModal(true) : undefined}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <ProjectCard key={project.Id} project={project} />
+          ))}
+        </div>
+      )}
+      
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Project"
+        size="md"
+      >
+        <form onSubmit={handleCreateProject} className="p-6 space-y-4">
+          <FormField
+            label="Project Name"
+            required
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Enter project name"
+          />
+          
+          <FormField
+            label="Description"
+            type="textarea"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Enter project description"
+            rows={3}
+          />
+          
+          <FormField
+            label="Status"
+            type="select"
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+          >
+            <option value="Planning">Planning</option>
+            <option value="Active">Active</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Completed">Completed</option>
+          </FormField>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              label="Start Date"
+              type="date"
+              required
+              value={formData.start_date}
+              onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+            />
+            
+            <FormField
+              label="End Date"
+              type="date"
+              required
+              value={formData.end_date}
+              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+            />
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={creating}>
+              Create Project
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
+export default ProjectsList;
