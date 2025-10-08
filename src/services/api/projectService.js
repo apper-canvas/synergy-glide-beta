@@ -290,7 +290,98 @@ return false;
       toast.error("Failed to fetch projects");
       return [];
     }
+},
+
+  importFromExcel: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const { ApperClient } = window.ApperSDK;
+      const client = new ApperClient({
+        apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+        apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+      });
+      
+      const result = await client.functions.invoke(
+        import.meta.env.VITE_PARSE_PROJECT_EXCEL,
+        {
+          body: formData,
+          headers: {}
+        }
+      );
+      
+      if (!result.success) {
+        console.info(`apper_info: Got an error in this function: ${import.meta.env.VITE_PARSE_PROJECT_EXCEL}. The response body is: ${JSON.stringify(result)}.`);
+        toast.error(result.message || 'Failed to parse Excel file');
+        return null;
+      }
+      
+      return result.data;
+    } catch (error) {
+      console.info(`apper_info: Got this error in this function: ${import.meta.env.VITE_PARSE_PROJECT_EXCEL}. The error is: ${error.message}`);
+      toast.error('Failed to parse Excel file');
+      return null;
+    }
+  },
+
+  bulkCreate: async (projects, currentUserId) => {
+    try {
+      const records = projects.map(project => ({
+        name_c: project.name_c,
+        description_c: project.description_c || '',
+        status_c: project.status_c || 'Planning',
+        start_date_c: project.start_date_c || null,
+        end_date_c: project.end_date_c || null,
+        progress_c: 0,
+        members_c: project.members_c || '',
+        created_by_c: parseInt(currentUserId),
+        created_at_c: new Date().toISOString(),
+        updated_at_c: new Date().toISOString()
+      }));
+      
+      const params = { records };
+      
+      const response = await apperClient.createRecord('project_c', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return { success: false, created: 0, failed: records.length };
+      }
+      
+      if (response.results) {
+        const successful = response.results.filter(r => r.success);
+        const failed = response.results.filter(r => !r.success);
+        
+        if (failed.length > 0) {
+          console.error(`Failed to create ${failed.length} projects:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+        }
+        
+        if (successful.length > 0) {
+          toast.success(`Successfully created ${successful.length} project(s)`);
+        }
+        
+        return {
+          success: true,
+          created: successful.length,
+          failed: failed.length,
+          failedRecords: failed
+        };
+      }
+      
+      return { success: false, created: 0, failed: records.length };
+    } catch (error) {
+      console.error("Error bulk creating projects:", error?.response?.data?.message || error);
+      toast.error("Failed to create projects");
+      return { success: false, created: 0, failed: projects.length };
+    }
   }
 };
+
+export default projectService;
 
 export default projectService;

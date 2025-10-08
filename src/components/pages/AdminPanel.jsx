@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import ApperIcon from "@/components/ApperIcon";
 import SearchBar from "@/components/molecules/SearchBar";
+import Modal from "@/components/molecules/Modal";
 import RoleBadge from "@/components/molecules/RoleBadge";
+import FileUpload from "@/components/molecules/FileUpload";
 import Error from "@/components/ui/Error";
+import Empty from "@/components/ui/Empty";
 import Loading from "@/components/ui/Loading";
 import Profile from "@/components/pages/Profile";
 import Login from "@/components/pages/Login";
@@ -11,17 +15,23 @@ import Avatar from "@/components/atoms/Avatar";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import { formatDateTime } from "@/utils/formatters";
+import { canImportProjects } from "@/utils/permissions";
 import userService from "@/services/api/userService";
-
+import projectService from "@/services/api/projectService";
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
+const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("users");
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleting, setDeleting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResults, setImportResults] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const { user } = useSelector((state) => state.user);
   const [currentUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('user') || 'null');
@@ -122,6 +132,81 @@ const AdminPanel = () => {
     );
   };
   
+const handleImportClick = () => {
+    setImportModalOpen(true);
+    setImportResults(null);
+    setSelectedFile(null);
+  };
+
+  const handleFileSelect = async (files) => {
+    if (files && files.length > 0) {
+      setSelectedFile(files[0]);
+    }
+  };
+
+  const handleImportConfirm = async () => {
+    if (!selectedFile) return;
+    
+    setImporting(true);
+    try {
+      const parseResult = await projectService.importFromExcel(selectedFile);
+      
+      if (!parseResult) {
+        setImporting(false);
+        return;
+      }
+      
+      const validProjects = parseResult.results
+        .filter(r => r.valid)
+        .map(r => r.data);
+      
+      if (validProjects.length === 0) {
+        setImportResults({
+          success: false,
+          message: 'No valid projects found in file',
+          validRows: 0,
+          invalidRows: parseResult.invalidRows,
+          created: 0,
+          failed: 0
+        });
+        setImporting(false);
+        return;
+      }
+      
+      const bulkResult = await projectService.bulkCreate(validProjects, user?.userId);
+      
+      setImportResults({
+        success: bulkResult.success,
+        validRows: parseResult.validRows,
+        invalidRows: parseResult.invalidRows,
+        created: bulkResult.created,
+        failed: bulkResult.failed
+      });
+    } catch (error) {
+      console.error('Import error:', error);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const template = [
+      ['Project Name', 'Description', 'Status', 'Start Date', 'End Date', 'Members'],
+      ['Website Redesign', 'Complete redesign of company website', 'Active', '2024-01-15', '2024-06-30', '1,2,3']
+    ];
+    
+    const csvContent = template.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'project-import-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const tabs = [
     { id: "users", label: "User Management", icon: "Users" },
     { id: "settings", label: "System Settings", icon: "Settings" },
@@ -169,6 +254,11 @@ const AdminPanel = () => {
                 {deleting ? "Deleting All..." : "Delete All Users"}
               </Button>
             </>
+)}
+          {activeTab === "import" && canImportProjects(user?.role) && (
+            <Button icon="Download" variant="outline" onClick={downloadTemplate}>
+              Download Template
+            </Button>
           )}
           <Button icon="Download">
             Export Data
@@ -341,7 +431,7 @@ const AdminPanel = () => {
                 </Button>
               </div>
             </div>
-          </div>
+</div>
         )}
         
         {activeTab === "import" && (
@@ -355,26 +445,49 @@ const AdminPanel = () => {
               </p>
               
               <div className="space-y-4">
-                <Card className="p-6 hover:border-primary-300 transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center">
-                        <ApperIcon name="Briefcase" size={24} className="text-primary-600" />
+                {canImportProjects(user?.role) ? (
+                  <Card 
+                    className="p-6 hover:border-primary-300 transition-colors cursor-pointer"
+                    onClick={handleImportClick}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center">
+                          <ApperIcon name="Briefcase" size={24} className="text-primary-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-900">
+                            Import Projects
+                          </h4>
+                          <p className="text-sm text-slate-600">
+                            Upload CSV/XLSX with project data
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-sm font-semibold text-slate-900">
-                          Import Projects
-                        </h4>
-                        <p className="text-sm text-slate-600">
-                          Upload CSV/XLSX with project data
-                        </p>
+                      <Button variant="outline" size="sm" icon="Upload">
+                        Choose File
+                      </Button>
+                    </div>
+                  </Card>
+                ) : (
+                  <Card className="p-6 bg-slate-50 border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center">
+                          <ApperIcon name="Lock" size={24} className="text-slate-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-600">
+                            Import Projects
+                          </h4>
+                          <p className="text-sm text-slate-500">
+                            Requires Administrator or Project Manager role
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" icon="Upload">
-                      Choose File
-                    </Button>
-                  </div>
-                </Card>
+                  </Card>
+                )}
                 
                 <Card className="p-6 hover:border-primary-300 transition-colors cursor-pointer">
                   <div className="flex items-center justify-between">
@@ -400,6 +513,145 @@ const AdminPanel = () => {
             </div>
           </div>
         )}
+        
+        <Modal
+          isOpen={importModalOpen}
+          onClose={() => {
+            if (!importing) {
+              setImportModalOpen(false);
+              setImportResults(null);
+              setSelectedFile(null);
+            }
+          }}
+          title="Import Projects"
+          size="lg"
+        >
+          {!importResults ? (
+            <div className="space-y-6">
+              <div className="text-sm text-slate-600">
+                <p className="mb-2">Upload an Excel file (.xlsx or .csv) with the following columns:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li><strong>Project Name</strong> (required)</li>
+                  <li><strong>Description</strong></li>
+                  <li><strong>Status</strong> (Planning, Active, On Hold, or Completed)</li>
+                  <li><strong>Start Date</strong> (YYYY-MM-DD format)</li>
+                  <li><strong>End Date</strong> (YYYY-MM-DD format)</li>
+                  <li><strong>Members</strong> (comma-separated user IDs, e.g., 1,2,3)</li>
+                </ul>
+              </div>
+              
+              <FileUpload
+                onUpload={handleFileSelect}
+                acceptedTypes=".xlsx,.xls,.csv"
+                maxSize={5242880}
+              />
+              
+              {selectedFile && (
+                <div className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border border-primary-200">
+                  <ApperIcon name="FileText" size={20} className="text-primary-600" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">
+                      {selectedFile.name}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      {(selectedFile.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setImportModalOpen(false);
+                    setSelectedFile(null);
+                  }}
+                  disabled={importing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImportConfirm}
+                  disabled={!selectedFile || importing}
+                  icon={importing ? undefined : "Upload"}
+                >
+                  {importing ? (
+                    <div className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Importing...
+                    </div>
+                  ) : (
+                    'Import Projects'
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {importResults.success && importResults.created > 0 ? (
+                <Empty
+                  icon="CheckCircle"
+                  title="Import Successful"
+                  message={`Successfully imported ${importResults.created} project(s). ${importResults.invalidRows > 0 ? `${importResults.invalidRows} row(s) were skipped due to validation errors.` : ''}`}
+                >
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setImportModalOpen(false);
+                        setImportResults(null);
+                        setSelectedFile(null);
+                      }}
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setImportResults(null);
+                        setSelectedFile(null);
+                      }}
+                      icon="Upload"
+                    >
+                      Import More
+                    </Button>
+                  </div>
+                </Empty>
+              ) : (
+                <Empty
+                  icon="AlertCircle"
+                  title="Import Failed"
+                  message={importResults.message || `Failed to import projects. ${importResults.invalidRows || 0} row(s) had validation errors.`}
+                >
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setImportModalOpen(false);
+                        setImportResults(null);
+                        setSelectedFile(null);
+                      }}
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setImportResults(null);
+                        setSelectedFile(null);
+                      }}
+                      icon="Upload"
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                </Empty>
+              )}
+            </div>
+          )}
+        </Modal>
       </Card>
     </div>
   );

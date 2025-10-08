@@ -8,9 +8,11 @@ const Empty = ({
   message = "Get started by creating your first item.",
   actionLabel,
   onAction,
+  actionVariant = "primary",
+  children,
   className 
 }) => {
-  return (
+return (
     <div className={cn("flex flex-col items-center justify-center py-12", className)}>
       <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
         <ApperIcon name={icon} size={40} className="text-slate-400" />
@@ -19,11 +21,13 @@ const Empty = ({
       <p className="text-sm text-slate-600 text-center max-w-md mb-6">
         {message}
       </p>
-      {actionLabel && onAction && (
-        <Button onClick={onAction} icon="Plus">
+      {children ? (
+        children
+      ) : actionLabel && onAction ? (
+        <Button onClick={onAction} icon="Plus" variant={actionVariant}>
           {actionLabel}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 };

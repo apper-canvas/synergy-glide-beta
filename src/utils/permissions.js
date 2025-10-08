@@ -17,6 +17,10 @@ export const canManageProjects = (userRole) => {
   return hasPermission(userRole, [ROLES.ADMINISTRATOR, ROLES.HR_ADMIN, ROLES.PROJECT_MANAGER]);
 };
 
+export const canImportProjects = (userRole) => {
+  return hasPermission(userRole, [ROLES.ADMINISTRATOR, ROLES.PROJECT_MANAGER]);
+};
+
 export const canManageUsers = (userRole) => {
   return hasPermission(userRole, [ROLES.ADMINISTRATOR]);
 };
