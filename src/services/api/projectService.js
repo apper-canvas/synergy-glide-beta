@@ -95,12 +95,12 @@ progress_c: 0,
       
       const response = await apperClient.createRecord('project_c', params);
       
-      if (!response.success) {
+if (!response.success) {
         console.error(response.message);
         toast.error(response.message);
         return null;
       }
-      
+
       if (response.results) {
         const failed = response.results.filter(r => !r.success);
         if (failed.length > 0) {
@@ -113,8 +113,8 @@ progress_c: 0,
         return response.results[0].data;
       }
     } catch (error) {
-      console.error("Error creating project:", error?.response?.data?.message || error);
-      toast.error("Failed to create project");
+      console.error("Error creating project:", error?.message || error);
+      toast.error(error?.message || "Failed to create project due to an unexpected error");
       return null;
     }
   },

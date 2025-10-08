@@ -12,9 +12,8 @@ const ProjectCard = ({ project, showCheckbox = false, isSelected = false, onSele
   return (
 <Card 
       hover 
-      className="relative"
+      className="relative p-6"
       onClick={() => navigate(`/projects/${project.Id}`)}
-      className="p-6"
     >
 {showCheckbox && (
         <div className="absolute top-4 left-4 z-10">
