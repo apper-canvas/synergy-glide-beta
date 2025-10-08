@@ -81,9 +81,14 @@ const [projects, setProjects] = useState([]);
     
     try {
       setCreating(true);
-      await projectService.create({
-        ...formData,
-        created_by: currentUser?.Id
+await projectService.create({
+        name_c: formData.name,
+        description_c: formData.description,
+        status_c: formData.status,
+        start_date_c: formData.start_date,
+        end_date_c: formData.end_date,
+        members_c: formData.members,
+        created_by_c: currentUser?.Id
       });
       toast.success("Project created successfully");
       setShowCreateModal(false);
