@@ -145,7 +145,7 @@ const resourceService = {
     }
   },
   
-  delete: async (id) => {
+delete: async (id) => {
     try {
       const params = {
         RecordIds: [parseInt(id)]
@@ -173,6 +173,65 @@ const resourceService = {
     } catch (error) {
       console.error("Error deleting resource:", error?.response?.data?.message || error);
       toast.error("Failed to delete resource");
+      return false;
+    }
+  },
+
+  deleteAll: async () => {
+    try {
+      // First, fetch all resource IDs
+      const fetchParams = {
+        fields: [{"field": {"Name": "Id"}}]
+      };
+      
+      const fetchResponse = await apperClient.fetchRecords('company_resource_c', fetchParams);
+      
+      if (!fetchResponse.success) {
+        console.error(fetchResponse.message);
+        toast.error(fetchResponse.message);
+        return false;
+      }
+      
+      const recordIds = (fetchResponse.data || []).map(record => record.Id);
+      
+      if (recordIds.length === 0) {
+        toast.info("No resources to delete");
+        return true;
+      }
+      
+      // Delete all records
+      const deleteParams = {
+        RecordIds: recordIds
+      };
+      
+      const response = await apperClient.deleteRecord('company_resource_c', deleteParams);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return false;
+      }
+      
+      if (response.results) {
+        const successful = response.results.filter(r => r.success);
+        const failed = response.results.filter(r => !r.success);
+        
+        if (failed.length > 0) {
+          console.error(`Failed to delete ${failed.length} resources:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+        }
+        
+        if (successful.length > 0) {
+          toast.success(`Successfully deleted ${successful.length} resource(s)`);
+        }
+        
+        return failed.length === 0;
+      }
+    } catch (error) {
+      console.error("Error deleting all resources:", error?.response?.data?.message || error);
+      toast.error("Failed to delete all resources");
       return false;
     }
   }

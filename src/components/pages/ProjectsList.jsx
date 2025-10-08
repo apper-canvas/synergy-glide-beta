@@ -1,23 +1,23 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import ProjectCard from "@/components/organisms/ProjectCard";
-import Button from "@/components/atoms/Button";
+import ApperIcon from "@/components/ApperIcon";
 import SearchBar from "@/components/molecules/SearchBar";
-import Select from "@/components/atoms/Select";
 import Modal from "@/components/molecules/Modal";
 import FormField from "@/components/molecules/FormField";
-import Loading from "@/components/ui/Loading";
 import Error from "@/components/ui/Error";
 import Empty from "@/components/ui/Empty";
+import Loading from "@/components/ui/Loading";
+import ProjectCard from "@/components/organisms/ProjectCard";
+import Select from "@/components/atoms/Select";
+import Button from "@/components/atoms/Button";
 import { canManageProjects } from "@/utils/permissions";
 import projectService from "@/services/api/projectService";
-
 const ProjectsList = () => {
   const navigate = useNavigate();
   const { currentUser } = useSelector(state => state.user);
-  const [projects, setProjects] = useState([]);
+const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,6 +25,7 @@ const ProjectsList = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -101,6 +102,19 @@ const ProjectsList = () => {
       setCreating(false);
     }
   };
+const handleDeleteAll = async () => {
+    if (!confirm("Are you sure you want to delete ALL projects? This action cannot be undone.")) {
+      return;
+    }
+    
+    setDeleting(true);
+    const success = await projectService.deleteAll();
+    setDeleting(false);
+    
+    if (success) {
+      await loadProjects();
+    }
+  };
   
   if (loading) return <Loading message="Loading projects..." />;
   if (error) return <Error message={error} onRetry={loadProjects} />;
@@ -115,9 +129,19 @@ const ProjectsList = () => {
           <p className="text-slate-600 mt-1">{filteredProjects.length} projects found</p>
         </div>
         
-        {canCreate && (
+{canCreate && (
           <Button icon="Plus" onClick={() => setShowCreateModal(true)}>
             New Project
+</Button>
+        )}
+        {canManageProjects(currentUser?.role) && projects.length > 0 && (
+          <Button
+            variant="destructive"
+            onClick={handleDeleteAll}
+            disabled={deleting}
+          >
+            <ApperIcon name="Trash2" size={16} />
+            {deleting ? "Deleting All..." : "Delete All Projects"}
           </Button>
         )}
       </div>

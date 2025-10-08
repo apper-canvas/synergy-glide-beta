@@ -1,4 +1,5 @@
 import { toast } from "react-toastify";
+import React from "react";
 
 const { ApperClient } = window.ApperSDK;
 const apperClient = new ApperClient({
@@ -165,7 +166,7 @@ const projectService = {
     }
   },
   
-  delete: async (id) => {
+delete: async (id) => {
     try {
       const params = {
         RecordIds: [parseInt(id)]
@@ -194,6 +195,65 @@ const projectService = {
       console.error("Error deleting project:", error?.response?.data?.message || error);
       toast.error("Failed to delete project");
       return false;
+    }
+  },
+
+  deleteAll: async () => {
+    try {
+      // First, fetch all project IDs
+      const fetchParams = {
+        fields: [{"field": {"Name": "Id"}}]
+      };
+      
+      const fetchResponse = await apperClient.fetchRecords('project_c', fetchParams);
+      
+      if (!fetchResponse.success) {
+        console.error(fetchResponse.message);
+        toast.error(fetchResponse.message);
+        return false;
+      }
+      
+      const recordIds = (fetchResponse.data || []).map(record => record.Id);
+      
+      if (recordIds.length === 0) {
+        toast.info("No projects to delete");
+        return true;
+      }
+      
+      // Delete all records
+      const deleteParams = {
+        RecordIds: recordIds
+      };
+      
+      const response = await apperClient.deleteRecord('project_c', deleteParams);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return false;
+      }
+      
+      if (response.results) {
+        const successful = response.results.filter(r => r.success);
+        const failed = response.results.filter(r => !r.success);
+        
+        if (failed.length > 0) {
+          console.error(`Failed to delete ${failed.length} projects:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+        }
+        
+        if (successful.length > 0) {
+          toast.success(`Successfully deleted ${successful.length} project(s)`);
+        }
+        
+        return failed.length === 0;
+      }
+    } catch (error) {
+      console.error("Error deleting all projects:", error?.response?.data?.message || error);
+      toast.error("Failed to delete all projects");
+return false;
     }
   },
   
