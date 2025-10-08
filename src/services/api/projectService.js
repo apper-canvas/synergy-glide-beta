@@ -383,5 +383,3 @@ return false;
 };
 
 export default projectService;
-
-export default projectService;
