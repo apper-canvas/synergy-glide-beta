@@ -321,8 +321,138 @@ return false;
       }
     } catch (error) {
       console.error("Error updating task status:", error?.response?.data?.message || error);
-      toast.error("Failed to update task status");
+toast.error("Failed to update task status");
       return null;
+    }
+  },
+
+  importTasks: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { ApperClient } = window.ApperSDK;
+      const apperClient = new ApperClient({
+        apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+        apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+      });
+
+      const parseResponse = await apperClient.functions.invoke(
+        import.meta.env.VITE_PARSE_TASK_CSV,
+        {
+          body: formData,
+          headers: {}
+        }
+      );
+
+      if (!parseResponse.success) {
+        console.info(`apper_info: Got an error in this function: ${import.meta.env.VITE_PARSE_TASK_CSV}. The response body is: ${JSON.stringify(parseResponse)}.`);
+        return {
+          success: false,
+          message: parseResponse.message || 'Failed to parse CSV file',
+          created: 0,
+          failed: 0,
+          invalidRows: 0
+        };
+      }
+
+      const { data } = parseResponse;
+      const validTasks = data.results.filter(r => r.valid).map(r => r.data);
+      const invalidRows = data.invalidRows;
+
+      if (validTasks.length === 0) {
+        return {
+          success: false,
+          message: 'No valid tasks found in CSV file',
+          created: 0,
+          failed: 0,
+          invalidRows: invalidRows,
+          details: data.results.filter(r => !r.valid).map(r => ({
+            row: r.rowNumber,
+            errors: r.errors
+          }))
+        };
+      }
+
+      const records = validTasks.map(task => {
+        const record = {
+          title_c: task.title_c,
+          description_c: task.description_c,
+          priority_c: task.priority_c,
+          status_c: task.status_c
+        };
+
+        if (task.due_date_c) {
+          record.due_date_c = task.due_date_c;
+        }
+        if (task.project_id_c) {
+          record.project_id_c = task.project_id_c;
+        }
+        if (task.assignee_id_c) {
+          record.assignee_id_c = task.assignee_id_c;
+        }
+        if (task.Tags) {
+          record.Tags = task.Tags;
+        }
+
+        return record;
+      });
+
+      const response = await apperClient.createRecord('task_c', {
+        records: records
+      });
+
+      if (!response.success) {
+        console.error(response.message);
+        return {
+          success: false,
+          message: response.message,
+          created: 0,
+          failed: validTasks.length,
+          invalidRows: invalidRows
+        };
+      }
+
+      if (response.results) {
+        const successful = response.results.filter(r => r.success);
+        const failed = response.results.filter(r => !r.success);
+
+        if (failed.length > 0) {
+          console.error(`Failed to create ${failed.length} tasks: ${JSON.stringify(failed)}`);
+        }
+
+        return {
+          success: successful.length > 0,
+          created: successful.length,
+          failed: failed.length,
+          invalidRows: invalidRows,
+          message: successful.length > 0 
+            ? `Successfully imported ${successful.length} task(s)` 
+            : 'Failed to import tasks',
+          details: failed.map(f => ({
+            errors: f.errors || [],
+            message: f.message
+          }))
+        };
+      }
+
+      return {
+        success: false,
+        message: 'Unexpected response format',
+        created: 0,
+        failed: validTasks.length,
+        invalidRows: invalidRows
+      };
+
+    } catch (error) {
+      console.info(`apper_info: Got this error in this function: ${import.meta.env.VITE_PARSE_TASK_CSV}. The error is: ${error.message}`);
+      return {
+        success: false,
+        message: error.message || 'Failed to import tasks',
+        created: 0,
+        failed: 0,
+        invalidRows: 0
+};
     }
   }
 };

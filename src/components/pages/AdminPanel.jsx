@@ -15,7 +15,8 @@ import Avatar from "@/components/atoms/Avatar";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import { formatDateTime } from "@/utils/formatters";
-import { canImportProjects } from "@/utils/permissions";
+import { canImportProjects, canImportTasks } from "@/utils/permissions";
+import taskService from "@/services/api/taskService";
 import userService from "@/services/api/userService";
 import projectService from "@/services/api/projectService";
 const AdminPanel = () => {
@@ -31,6 +32,7 @@ const [searchQuery, setSearchQuery] = useState("");
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [importType, setImportType] = useState('project');
   const { user } = useSelector((state) => state.user);
   const [currentUser] = useState(() => {
     try {
@@ -132,7 +134,8 @@ const [searchQuery, setSearchQuery] = useState("");
     );
   };
   
-const handleImportClick = () => {
+const handleImportClick = (type) => {
+    setImportType(type);
     setImportModalOpen(true);
     setImportResults(null);
     setSelectedFile(null);
@@ -189,22 +192,58 @@ const handleImportClick = () => {
     }
   };
 
-  const downloadTemplate = () => {
-    const template = [
-      ['Project Name', 'Description', 'Status', 'Start Date', 'End Date', 'Members'],
-      ['Website Redesign', 'Complete redesign of company website', 'Active', '2024-01-15', '2024-06-30', '1,2,3']
-    ];
+const downloadTemplate = () => {
+    let template, filename;
+    
+    if (importType === 'project') {
+      template = [
+        ['Project Name', 'Description', 'Status', 'Start Date', 'End Date', 'Members'],
+        ['Website Redesign', 'Complete redesign of company website', 'Active', '2024-01-15', '2024-06-30', '1,2,3']
+      ];
+      filename = 'project-import-template.csv';
+    } else {
+      template = [
+        ['Task Title', 'Description', 'Priority', 'Status', 'Due Date', 'Project ID', 'Assignee ID', 'Tags'],
+        ['Implement user authentication', 'Add login and signup functionality', 'High', 'To Do', '2024-12-31', '1', '5', 'backend,security']
+      ];
+      filename = 'task-import-template.csv';
+    }
     
     const csvContent = template.map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'project-import-template.csv';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+  };
+const handleImportConfirm = async () => {
+    if (!selectedFile) return;
+    
+    setImporting(true);
+    try {
+      let result;
+      if (importType === 'project') {
+        result = await projectService.importProjects(selectedFile);
+      } else {
+        result = await taskService.importTasks(selectedFile);
+      }
+      setImportResults(result);
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportResults({
+        success: false,
+        message: error.message || 'Import failed',
+        created: 0,
+        failed: 0,
+        invalidRows: 0
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const tabs = [
@@ -255,7 +294,7 @@ const handleImportClick = () => {
               </Button>
             </>
 )}
-          {activeTab === "import" && canImportProjects(user?.role) && (
+{activeTab === "import" && (canImportProjects(user?.role) || canImportTasks(user?.role)) && (
             <Button icon="Download" variant="outline" onClick={downloadTemplate}>
               Download Template
             </Button>
@@ -444,11 +483,11 @@ const handleImportClick = () => {
                 Import projects, tasks, or users from CSV/XLSX files
               </p>
               
-              <div className="space-y-4">
+<div className="space-y-4">
                 {canImportProjects(user?.role) ? (
                   <Card 
                     className="p-6 hover:border-primary-300 transition-colors cursor-pointer"
-                    onClick={handleImportClick}
+                    onClick={() => handleImportClick('project')}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -479,6 +518,50 @@ const handleImportClick = () => {
                         <div>
                           <h4 className="text-sm font-semibold text-slate-600">
                             Import Projects
+                          </h4>
+                          <p className="text-sm text-slate-500">
+                            Requires Administrator or Project Manager role
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {canImportTasks(user?.role) ? (
+                  <Card 
+                    className="p-6 hover:border-primary-300 transition-colors cursor-pointer"
+                    onClick={() => handleImportClick('task')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center">
+                          <ApperIcon name="CheckSquare" size={24} className="text-emerald-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-900">
+                            Import Tasks
+                          </h4>
+                          <p className="text-sm text-slate-600">
+                            Upload CSV with task data
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" icon="Upload">
+                        Choose File
+                      </Button>
+                    </div>
+                  </Card>
+                ) : (
+                  <Card className="p-6 bg-slate-50 border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center">
+                          <ApperIcon name="Lock" size={24} className="text-slate-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-600">
+                            Import Tasks
                           </h4>
                           <p className="text-sm text-slate-500">
                             Requires Administrator or Project Manager role
@@ -523,21 +606,34 @@ const handleImportClick = () => {
               setSelectedFile(null);
             }
           }}
-          title="Import Projects"
+title={importType === 'project' ? 'Import Projects' : 'Import Tasks'}
           size="lg"
         >
           {!importResults ? (
-            <div className="space-y-6">
+<div className="space-y-6">
               <div className="text-sm text-slate-600">
-                <p className="mb-2">Upload an Excel file (.xlsx or .csv) with the following columns:</p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li><strong>Project Name</strong> (required)</li>
-                  <li><strong>Description</strong></li>
-                  <li><strong>Status</strong> (Planning, Active, On Hold, or Completed)</li>
-                  <li><strong>Start Date</strong> (YYYY-MM-DD format)</li>
-                  <li><strong>End Date</strong> (YYYY-MM-DD format)</li>
-                  <li><strong>Members</strong> (comma-separated user IDs, e.g., 1,2,3)</li>
-                </ul>
+                <p className="mb-2">Upload a CSV file with the following columns:</p>
+                {importType === 'project' ? (
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li><strong>Project Name</strong> (required)</li>
+                    <li><strong>Description</strong></li>
+                    <li><strong>Status</strong> (Planning, Active, On Hold, or Completed)</li>
+                    <li><strong>Start Date</strong> (YYYY-MM-DD format)</li>
+                    <li><strong>End Date</strong> (YYYY-MM-DD format)</li>
+                    <li><strong>Members</strong> (comma-separated user IDs, e.g., 1,2,3)</li>
+                  </ul>
+                ) : (
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li><strong>Task Title</strong> (required)</li>
+                    <li><strong>Description</strong></li>
+                    <li><strong>Priority</strong> (Critical, High, Medium, or Low)</li>
+                    <li><strong>Status</strong> (To Do, In Progress, Review, or Done)</li>
+                    <li><strong>Due Date</strong> (YYYY-MM-DD format)</li>
+                    <li><strong>Project ID</strong> (numeric ID of the project)</li>
+                    <li><strong>Assignee ID</strong> (numeric ID of the user)</li>
+                    <li><strong>Tags</strong> (comma-separated tags, e.g., backend,urgent)</li>
+                  </ul>
+                )}
               </div>
               
               <FileUpload
@@ -572,7 +668,7 @@ const handleImportClick = () => {
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleImportConfirm}
+onClick={handleImportConfirm}
                   disabled={!selectedFile || importing}
                   icon={importing ? undefined : "Upload"}
                 >
@@ -585,18 +681,18 @@ const handleImportClick = () => {
                       Importing...
                     </div>
                   ) : (
-                    'Import Projects'
+                    importType === 'project' ? 'Import Projects' : 'Import Tasks'
                   )}
                 </Button>
               </div>
-            </div>
+</div>
           ) : (
             <div className="space-y-4">
               {importResults.success && importResults.created > 0 ? (
                 <Empty
                   icon="CheckCircle"
                   title="Import Successful"
-                  message={`Successfully imported ${importResults.created} project(s). ${importResults.invalidRows > 0 ? `${importResults.invalidRows} row(s) were skipped due to validation errors.` : ''}`}
+                  message={`Successfully imported ${importResults.created} ${importType === 'project' ? 'project' : 'task'}(s). ${importResults.invalidRows > 0 ? `${importResults.invalidRows} row(s) were skipped due to validation errors.` : ''}`}
                 >
                   <div className="flex gap-3">
                     <Button
@@ -624,7 +720,7 @@ const handleImportClick = () => {
                 <Empty
                   icon="AlertCircle"
                   title="Import Failed"
-                  message={importResults.message || `Failed to import projects. ${importResults.invalidRows || 0} row(s) had validation errors.`}
+                  message={importResults.message || `Failed to import ${importType === 'project' ? 'projects' : 'tasks'}. ${importResults.invalidRows || 0} row(s) had validation errors.`}
                 >
                   <div className="flex gap-3">
                     <Button
