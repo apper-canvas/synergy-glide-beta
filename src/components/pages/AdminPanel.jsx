@@ -141,54 +141,9 @@ const handleImportClick = (type) => {
     setSelectedFile(null);
   };
 
-  const handleFileSelect = async (files) => {
+const handleFileSelect = async (files) => {
     if (files && files.length > 0) {
       setSelectedFile(files[0]);
-    }
-  };
-
-  const handleImportConfirm = async () => {
-    if (!selectedFile) return;
-    
-    setImporting(true);
-    try {
-      const parseResult = await projectService.importFromExcel(selectedFile);
-      
-      if (!parseResult) {
-        setImporting(false);
-        return;
-      }
-      
-      const validProjects = parseResult.results
-        .filter(r => r.valid)
-        .map(r => r.data);
-      
-      if (validProjects.length === 0) {
-        setImportResults({
-          success: false,
-          message: 'No valid projects found in file',
-          validRows: 0,
-          invalidRows: parseResult.invalidRows,
-          created: 0,
-          failed: 0
-        });
-        setImporting(false);
-        return;
-      }
-      
-      const bulkResult = await projectService.bulkCreate(validProjects, user?.userId);
-      
-      setImportResults({
-        success: bulkResult.success,
-        validRows: parseResult.validRows,
-        invalidRows: parseResult.invalidRows,
-        created: bulkResult.created,
-        failed: bulkResult.failed
-      });
-    } catch (error) {
-      console.error('Import error:', error);
-    } finally {
-      setImporting(false);
     }
   };
 
