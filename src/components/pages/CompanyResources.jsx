@@ -256,7 +256,7 @@ const CompanyResources = () => {
             <FileUpload
               onUpload={handleFileUpload}
               maxSize={104857600}
-              acceptedTypes=".pdf,.docx,.xlsx,.pptx,.zip"
+              acceptedTypes=".pdf,.docx,.xlsx,.pptx,.zip,.png"
             />
           </div>
           
