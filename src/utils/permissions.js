@@ -46,10 +46,3 @@ export const canAccessProject = (userRole, project, userId) => {
   }
   return project?.members?.some(member => member.user_id === userId);
 };
-
-export const canAccessProject = (userRole, project, userId) => {
-  if (hasPermission(userRole, [ROLES.ADMINISTRATOR, ROLES.HR_ADMIN])) {
-    return true;
-  }
-  return project?.members?.some(member => member.user_id === userId);
-};
