@@ -40,6 +40,14 @@ export const canManageTasks = (userRole, task, userId) => {
   return task?.assignee_id === userId || task?.created_by === userId;
 };
 
+export const canImportProjects = (userRole) => {
+  return hasPermission(userRole, [ROLES.ADMINISTRATOR, ROLES.PROJECT_MANAGER]);
+};
+
+export const canImportTasks = (userRole) => {
+  return hasPermission(userRole, [ROLES.ADMINISTRATOR, ROLES.PROJECT_MANAGER]);
+};
+
 export const canAccessProject = (userRole, project, userId) => {
   if (hasPermission(userRole, [ROLES.ADMINISTRATOR, ROLES.HR_ADMIN])) {
     return true;

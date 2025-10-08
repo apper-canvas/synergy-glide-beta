@@ -141,13 +141,13 @@ const handleImportClick = (type) => {
     setSelectedFile(null);
   };
 
-const handleFileSelect = async (files) => {
+  const handleFileSelect = async (files) => {
     if (files && files.length > 0) {
       setSelectedFile(files[0]);
     }
   };
 
-const downloadTemplate = () => {
+  const downloadTemplate = () => {
     let template, filename;
     
     if (importType === 'project') {
@@ -175,14 +175,15 @@ const downloadTemplate = () => {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   };
-const handleImportConfirm = async () => {
+
+  const handleImportConfirm = async () => {
     if (!selectedFile) return;
     
     setImporting(true);
     try {
       let result;
       if (importType === 'project') {
-        result = await projectService.importProjects(selectedFile);
+        result = await projectService.importProjects(selectedFile, user?.Id);
       } else {
         result = await taskService.importTasks(selectedFile);
       }
@@ -428,17 +429,17 @@ const handleImportConfirm = async () => {
 </div>
         )}
         
-        {activeTab === "import" && (
+{activeTab === "import" && (
           <div className="p-6 space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-slate-900 mb-4">
                 Bulk Data Import
               </h3>
               <p className="text-sm text-slate-600 mb-4">
-                Import projects, tasks, or users from CSV/XLSX files
+                Import projects or tasks from CSV/XLSX files
               </p>
               
-<div className="space-y-4">
+              <div className="space-y-4">
                 {canImportProjects(user?.role) ? (
                   <Card 
                     className="p-6 hover:border-primary-300 transition-colors cursor-pointer"
@@ -526,27 +527,6 @@ const handleImportConfirm = async () => {
                     </div>
                   </Card>
                 )}
-                
-                <Card className="p-6 hover:border-primary-300 transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <ApperIcon name="CheckSquare" size={24} className="text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-semibold text-slate-900">
-                          Import Tasks
-                        </h4>
-                        <p className="text-sm text-slate-600">
-                          Upload CSV/XLSX with task data
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" icon="Upload">
-                      Choose File
-                    </Button>
-                  </div>
-                </Card>
               </div>
             </div>
           </div>

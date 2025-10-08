@@ -292,7 +292,7 @@ return false;
     }
 },
 
-  importFromExcel: async (file) => {
+importProjects: async (file, currentUserId) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -303,7 +303,7 @@ return false;
         apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
       });
       
-      const result = await client.functions.invoke(
+      const parseResponse = await client.functions.invoke(
         import.meta.env.VITE_PARSE_PROJECT_EXCEL,
         {
           body: formData,
@@ -311,43 +311,72 @@ return false;
         }
       );
       
-      if (!result.success) {
-        console.info(`apper_info: Got an error in this function: ${import.meta.env.VITE_PARSE_PROJECT_EXCEL}. The response body is: ${JSON.stringify(result)}.`);
-        toast.error(result.message || 'Failed to parse Excel file');
-        return null;
+      if (!parseResponse.success) {
+        console.info(`apper_info: Got an error in this function: ${import.meta.env.VITE_PARSE_PROJECT_EXCEL}. The response body is: ${JSON.stringify(parseResponse)}.`);
+        return {
+          success: false,
+          message: parseResponse.message || 'Failed to parse Excel file',
+          created: 0,
+          failed: 0,
+          invalidRows: 0
+        };
       }
       
-      return result.data;
-    } catch (error) {
-      console.info(`apper_info: Got this error in this function: ${import.meta.env.VITE_PARSE_PROJECT_EXCEL}. The error is: ${error.message}`);
-      toast.error('Failed to parse Excel file');
-      return null;
-    }
-  },
-
-  bulkCreate: async (projects, currentUserId) => {
-    try {
-      const records = projects.map(project => ({
-        name_c: project.name_c,
-        description_c: project.description_c || '',
-        status_c: project.status_c || 'Planning',
-        start_date_c: project.start_date_c || null,
-        end_date_c: project.end_date_c || null,
-        progress_c: 0,
-        members_c: project.members_c || '',
-        created_by_c: parseInt(currentUserId),
-        created_at_c: new Date().toISOString(),
-        updated_at_c: new Date().toISOString()
-      }));
+      const { data } = parseResponse;
+      const validProjects = data.results.filter(r => r.valid).map(r => r.data);
+      const invalidRows = data.invalidRows;
       
-      const params = { records };
+      if (validProjects.length === 0) {
+        return {
+          success: false,
+          message: 'No valid projects found in Excel file',
+          created: 0,
+          failed: 0,
+          invalidRows: invalidRows,
+          details: data.results.filter(r => !r.valid).map(r => ({
+            row: r.rowNumber,
+            errors: r.errors
+          }))
+        };
+      }
       
-      const response = await apperClient.createRecord('project_c', params);
+      const records = validProjects.map(project => {
+        const record = {
+          name_c: project.name_c,
+          description_c: project.description_c || '',
+          status_c: project.status_c || 'Planning',
+          progress_c: 0,
+          created_by_c: parseInt(currentUserId),
+          created_at_c: new Date().toISOString(),
+          updated_at_c: new Date().toISOString()
+        };
+        
+        if (project.start_date_c) {
+          record.start_date_c = project.start_date_c;
+        }
+        if (project.end_date_c) {
+          record.end_date_c = project.end_date_c;
+        }
+        if (project.members_c) {
+          record.members_c = project.members_c;
+        }
+        
+        return record;
+      });
+      
+      const response = await apperClient.createRecord('project_c', {
+        records: records
+      });
       
       if (!response.success) {
         console.error(response.message);
-        toast.error(response.message);
-        return { success: false, created: 0, failed: records.length };
+        return {
+          success: false,
+          message: response.message,
+          created: 0,
+          failed: validProjects.length,
+          invalidRows: invalidRows
+        };
       }
       
       if (response.results) {
@@ -355,29 +384,41 @@ return false;
         const failed = response.results.filter(r => !r.success);
         
         if (failed.length > 0) {
-          console.error(`Failed to create ${failed.length} projects:`, failed);
-          failed.forEach(record => {
-            if (record.message) toast.error(record.message);
-          });
-        }
-        
-        if (successful.length > 0) {
-          toast.success(`Successfully created ${successful.length} project(s)`);
+          console.error(`Failed to create ${failed.length} projects: ${JSON.stringify(failed)}`);
         }
         
         return {
-          success: true,
+          success: successful.length > 0,
           created: successful.length,
           failed: failed.length,
-          failedRecords: failed
+          invalidRows: invalidRows,
+          message: successful.length > 0 
+            ? `Successfully imported ${successful.length} project(s)` 
+            : 'Failed to import projects',
+          details: failed.map(f => ({
+            errors: f.errors || [],
+            message: f.message
+          }))
         };
       }
       
-      return { success: false, created: 0, failed: records.length };
+      return {
+        success: false,
+        message: 'Unexpected response format',
+        created: 0,
+        failed: validProjects.length,
+        invalidRows: invalidRows
+      };
+      
     } catch (error) {
-      console.error("Error bulk creating projects:", error?.response?.data?.message || error);
-      toast.error("Failed to create projects");
-      return { success: false, created: 0, failed: projects.length };
+      console.info(`apper_info: Got this error in this function: ${import.meta.env.VITE_PARSE_PROJECT_EXCEL}. The error is: ${error.message}`);
+      return {
+        success: false,
+        message: error.message || 'Failed to import projects',
+        created: 0,
+        failed: 0,
+        invalidRows: 0
+      };
     }
   }
 };
