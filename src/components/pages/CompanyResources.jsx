@@ -1,24 +1,24 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
+import ApperIcon from "@/components/ApperIcon";
 import SearchBar from "@/components/molecules/SearchBar";
-import Select from "@/components/atoms/Select";
 import Modal from "@/components/molecules/Modal";
-import FormField from "@/components/molecules/FormField";
 import FileUpload from "@/components/molecules/FileUpload";
-import Loading from "@/components/ui/Loading";
+import FormField from "@/components/molecules/FormField";
 import Error from "@/components/ui/Error";
 import Empty from "@/components/ui/Empty";
-import ApperIcon from "@/components/ApperIcon";
-import { formatFileSize, formatDate } from "@/utils/formatters";
+import Loading from "@/components/ui/Loading";
+import Select from "@/components/atoms/Select";
+import Card from "@/components/atoms/Card";
+import Button from "@/components/atoms/Button";
+import { formatDate, formatFileSize } from "@/utils/formatters";
 import { canUploadCompanyResources } from "@/utils/permissions";
 import resourceService from "@/services/api/resourceService";
 
 const CompanyResources = () => {
   const { currentUser } = useSelector(state => state.user);
-  const [resources, setResources] = useState([]);
+const [resources, setResources] = useState([]);
   const [filteredResources, setFilteredResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,7 +26,8 @@ const CompanyResources = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+  const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     category: "Policies",
@@ -127,7 +128,59 @@ const CompanyResources = () => {
   if (loading) return <Loading message="Loading resources..." />;
   if (error) return <Error message={error} onRetry={loadResources} />;
   
-  const canUpload = canUploadCompanyResources(currentUser?.role);
+const canUpload = canUploadCompanyResources(currentUser?.role);
+  
+  const handleDeleteAll = async () => {
+    if (!confirm("Are you sure you want to delete ALL resources? This action cannot be undone.")) {
+      return;
+    }
+    
+    setDeleting(true);
+    const success = await resourceService.deleteAll();
+    setDeleting(false);
+    
+    if (success) {
+      setSelectedIds([]);
+      await loadResources();
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} selected resource(s)? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setDeleting(true);
+    let allSucceeded = true;
+    
+    for (const id of selectedIds) {
+      const success = await resourceService.delete(id);
+      if (!success) allSucceeded = false;
+    }
+    
+    setDeleting(false);
+    
+    if (allSucceeded) {
+      setSelectedIds([]);
+      await loadResources();
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredResources.map(r => r.Id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectResource = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(rid => rid !== id) : [...prev, id]
+    );
+  };
   
   return (
     <div className="space-y-6">
@@ -136,11 +189,41 @@ const CompanyResources = () => {
           <h1 className="text-3xl font-bold text-slate-900">Company Resources</h1>
           <p className="text-slate-600 mt-1">{filteredResources.length} resources available</p>
         </div>
-        
         {canUpload && (
-          <Button icon="Upload" onClick={() => setShowUploadModal(true)}>
-            Upload Resource
-          </Button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={selectedIds.length === filteredResources.length && filteredResources.length > 0}
+                onChange={handleSelectAll}
+                className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+              />
+              Select All
+            </label>
+            {selectedIds.length > 0 && (
+              <Button
+                variant="danger"
+                onClick={handleDeleteSelected}
+                disabled={deleting}
+                icon="Trash2"
+              >
+                {deleting ? "Deleting..." : `Delete Selected (${selectedIds.length})`}
+              </Button>
+            )}
+            {resources.length > 0 && (
+              <Button
+                variant="danger"
+                onClick={handleDeleteAll}
+                disabled={deleting}
+                icon="Trash2"
+              >
+                {deleting ? "Deleting All..." : "Delete All Resources"}
+              </Button>
+            )}
+            <Button icon="Upload" onClick={() => setShowUploadModal(true)}>
+              Upload Resource
+            </Button>
+          </div>
         )}
       </div>
       
@@ -175,10 +258,22 @@ const CompanyResources = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredResources.map((resource) => {
+{filteredResources.map((resource) => {
             const { icon, color } = getFileIcon(resource.file_type);
+            const isSelected = selectedIds.includes(resource.Id);
             return (
-              <Card key={resource.Id} hover className="p-6">
+              <Card key={resource.Id} hover className="p-6 relative">
+                {canUpload && (
+                  <div className="absolute top-3 right-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectResource(resource.Id)}
+                      className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                )}
                 <div className="flex flex-col items-center text-center">
                   <div className={`w-16 h-16 rounded-lg bg-${color}-100 flex items-center justify-center mb-4`}>
                     <ApperIcon name={icon} size={32} className={`text-${color}-600`} />

@@ -26,7 +26,7 @@ const [projects, setProjects] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  
+  const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -112,8 +112,46 @@ const handleDeleteAll = async () => {
     setDeleting(false);
     
     if (success) {
+      setSelectedIds([]);
       await loadProjects();
     }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} selected project(s)? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setDeleting(true);
+    let allSucceeded = true;
+    
+    for (const id of selectedIds) {
+      const success = await projectService.delete(id);
+      if (!success) allSucceeded = false;
+    }
+    
+    setDeleting(false);
+    
+    if (allSucceeded) {
+      setSelectedIds([]);
+      await loadProjects();
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredProjects.map(p => p.Id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectProject = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
+    );
   };
   
   if (loading) return <Loading message="Loading projects..." />;
@@ -135,14 +173,35 @@ const handleDeleteAll = async () => {
 </Button>
         )}
         {canManageProjects(currentUser?.role) && projects.length > 0 && (
-          <Button
-            variant="destructive"
-            onClick={handleDeleteAll}
-            disabled={deleting}
-          >
-            <ApperIcon name="Trash2" size={16} />
-            {deleting ? "Deleting All..." : "Delete All Projects"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={selectedIds.length === filteredProjects.length && filteredProjects.length > 0}
+                onChange={handleSelectAll}
+                className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+              />
+              Select All
+            </label>
+            {selectedIds.length > 0 && (
+              <Button
+                variant="danger"
+                onClick={handleDeleteSelected}
+                disabled={deleting}
+                icon="Trash2"
+              >
+                {deleting ? "Deleting..." : `Delete Selected (${selectedIds.length})`}
+              </Button>
+            )}
+            <Button
+              variant="danger"
+              onClick={handleDeleteAll}
+              disabled={deleting}
+              icon="Trash2"
+            >
+              {deleting ? "Deleting All..." : "Delete All Projects"}
+            </Button>
+          </div>
         )}
       </div>
       
@@ -176,8 +235,14 @@ const handleDeleteAll = async () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <ProjectCard key={project.Id} project={project} />
+{filteredProjects.map((project) => (
+            <ProjectCard 
+              key={project.Id} 
+              project={project}
+              showCheckbox={canManageProjects(currentUser?.role)}
+              isSelected={selectedIds.includes(project.Id)}
+              onSelect={() => handleSelectProject(project.Id)}
+            />
           ))}
         </div>
       )}

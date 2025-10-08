@@ -150,7 +150,7 @@ const userService = {
     }
   },
   
-  delete: async (id) => {
+delete: async (id) => {
     try {
       const params = {
         RecordIds: [parseInt(id)]
@@ -178,6 +178,65 @@ const userService = {
     } catch (error) {
       console.error("Error deleting user:", error?.response?.data?.message || error);
       toast.error("Failed to delete user");
+      return false;
+    }
+  },
+
+  deleteAll: async () => {
+    try {
+      // First, fetch all user IDs
+      const fetchParams = {
+        fields: [{"field": {"Name": "Id"}}]
+      };
+      
+      const fetchResponse = await apperClient.fetchRecords('user_c', fetchParams);
+      
+      if (!fetchResponse.success) {
+        console.error(fetchResponse.message);
+        toast.error(fetchResponse.message);
+        return false;
+      }
+      
+      const recordIds = (fetchResponse.data || []).map(record => record.Id);
+      
+      if (recordIds.length === 0) {
+        toast.info("No users to delete");
+        return true;
+      }
+      
+      // Delete all records
+      const deleteParams = {
+        RecordIds: recordIds
+      };
+      
+      const response = await apperClient.deleteRecord('user_c', deleteParams);
+      
+      if (!response.success) {
+        console.error(response.message);
+        toast.error(response.message);
+        return false;
+      }
+      
+      if (response.results) {
+        const successful = response.results.filter(r => r.success);
+        const failed = response.results.filter(r => !r.success);
+        
+        if (failed.length > 0) {
+          console.error(`Failed to delete ${failed.length} users:`, failed);
+          failed.forEach(record => {
+            if (record.message) toast.error(record.message);
+          });
+        }
+        
+        if (successful.length > 0) {
+          toast.success(`Successfully deleted ${successful.length} user(s)`);
+        }
+        
+        return failed.length === 0;
+      }
+    } catch (error) {
+      console.error("Error deleting all users:", error?.response?.data?.message || error);
+      toast.error("Failed to delete all users");
       return false;
     }
   }

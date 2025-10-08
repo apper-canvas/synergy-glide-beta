@@ -6,17 +6,33 @@ import ProgressBar from "@/components/atoms/ProgressBar";
 import ApperIcon from "@/components/ApperIcon";
 import { formatDate } from "@/utils/formatters";
 
-const ProjectCard = ({ project }) => {
+const ProjectCard = ({ project, showCheckbox = false, isSelected = false, onSelect }) => {
   const navigate = useNavigate();
   
   return (
-    <Card 
+<Card 
       hover 
+      className="relative"
       onClick={() => navigate(`/projects/${project.Id}`)}
       className="p-6"
     >
+{showCheckbox && (
+        <div className="absolute top-4 left-4 z-10">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onSelect?.();
+            }}
+            className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+      
       <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
+        <div className="flex-1" style={{ paddingLeft: showCheckbox ? '2rem' : '0' }}>
           <h3 className="text-lg font-semibold text-slate-900 mb-1">
             {project.name}
           </h3>

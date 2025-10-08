@@ -1,30 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
-import Select from "@/components/atoms/Select";
+import ApperIcon from "@/components/ApperIcon";
 import StatusBadge from "@/components/molecules/StatusBadge";
+import Error from "@/components/ui/Error";
+import Loading from "@/components/ui/Loading";
 import TaskCard from "@/components/organisms/TaskCard";
 import TaskDetailModal from "@/components/organisms/TaskDetailModal";
-import Loading from "@/components/ui/Loading";
-import Error from "@/components/ui/Error";
-import ApperIcon from "@/components/ApperIcon";
+import Select from "@/components/atoms/Select";
+import Card from "@/components/atoms/Card";
+import Button from "@/components/atoms/Button";
 import { cn } from "@/utils/cn";
+import { canManageTasks } from "@/utils/permissions";
 import taskService from "@/services/api/taskService";
 import projectService from "@/services/api/projectService";
 
 const TaskBoard = () => {
   const { currentUser } = useSelector(state => state.user);
   const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
+const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [viewMode, setViewMode] = useState("board");
   const [filterProject, setFilterProject] = useState("all");
-  
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [deleting, setDeleting] = useState(false);
   const columns = [
     { id: "To Do", title: "To Do", color: "slate" },
     { id: "In Progress", title: "In Progress", color: "blue" },
@@ -95,6 +97,58 @@ const TaskBoard = () => {
     return filtered;
   };
   
+const handleDeleteAll = async () => {
+    if (!confirm("Are you sure you want to delete ALL tasks? This action cannot be undone.")) {
+      return;
+    }
+    
+    setDeleting(true);
+    const success = await taskService.deleteAll();
+    setDeleting(false);
+    
+    if (success) {
+      setSelectedIds([]);
+      await loadData();
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} selected task(s)? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setDeleting(true);
+    let allSucceeded = true;
+    
+    for (const id of selectedIds) {
+      const success = await taskService.delete(id);
+      if (!success) allSucceeded = false;
+    }
+    
+    setDeleting(false);
+    
+    if (allSucceeded) {
+      setSelectedIds([]);
+      await loadData();
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(tasks.map(t => t.Id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectTask = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]
+    );
+  };
+
   if (loading) return <Loading message="Loading tasks..." />;
   if (error) return <Error message={error} onRetry={loadData} />;
   
@@ -146,6 +200,38 @@ const TaskBoard = () => {
               </option>
             ))}
           </Select>
+
+          {canManageTasks(currentUser?.role) && tasks.length > 0 && (
+            <>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.length === tasks.length && tasks.length > 0}
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                />
+                Select All
+              </label>
+              {selectedIds.length > 0 && (
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteSelected}
+                  disabled={deleting}
+                  icon="Trash2"
+                >
+                  {deleting ? "Deleting..." : `Delete Selected (${selectedIds.length})`}
+                </Button>
+              )}
+              <Button
+                variant="danger"
+                onClick={handleDeleteAll}
+                disabled={deleting}
+                icon="Trash2"
+              >
+                {deleting ? "Deleting All..." : "Delete All Tasks"}
+              </Button>
+            </>
+          )}
           
           <Button icon="Plus">
             New Task
@@ -184,11 +270,14 @@ const TaskBoard = () => {
                   className="space-y-3 min-h-[200px] p-3 rounded-lg border-2 border-dashed border-transparent transition-colors"
                 >
                   {columnTasks.map((task) => (
-                    <TaskCard
+<TaskCard
                       key={task.Id}
                       task={task}
                       onTaskClick={handleTaskClick}
                       onTaskUpdate={loadData}
+                      showCheckbox={canManageTasks(currentUser?.role)}
+                      isSelected={selectedIds.includes(task.Id)}
+                      onSelect={() => handleSelectTask(task.Id)}
                     />
                   ))}
                 </div>
@@ -221,26 +310,51 @@ const TaskBoard = () => {
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {tasks.map((task) => (
-                  <tr
+<tr
                     key={task.Id}
-                    onClick={() => handleTaskClick(task)}
-                    className="hover:bg-slate-50 cursor-pointer transition-colors"
+                    className="hover:bg-slate-50 transition-colors"
                   >
-                    <td className="px-6 py-4">
+                    {canManageTasks(currentUser?.role) && (
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(task.Id)}
+                          onChange={() => handleSelectTask(task.Id)}
+                          className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                    )}
+                    <td 
+                      className="px-6 py-4 cursor-pointer"
+                      onClick={() => handleTaskClick(task)}
+                    >
                       <p className="text-sm font-medium text-slate-900">{task.title}</p>
                     </td>
-                    <td className="px-6 py-4">
+                    <td 
+                      className="px-6 py-4 cursor-pointer"
+                      onClick={() => handleTaskClick(task)}
+                    >
                       <StatusBadge status={task.status} type="task" size="sm" />
                     </td>
-                    <td className="px-6 py-4">
+                    <td 
+                      className="px-6 py-4 cursor-pointer"
+                      onClick={() => handleTaskClick(task)}
+                    >
                       <StatusBadge status={task.priority} type="priority" size="sm" />
                     </td>
-                    <td className="px-6 py-4">
+                    <td 
+                      className="px-6 py-4 cursor-pointer"
+                      onClick={() => handleTaskClick(task)}
+                    >
                       <span className="text-sm text-slate-900">
                         {task.assignee?.name || "Unassigned"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td 
+                      className="px-6 py-4 cursor-pointer"
+                      onClick={() => handleTaskClick(task)}
+                    >
                       <span className="text-sm text-slate-600">
                         {task.due_date || "-"}
                       </span>

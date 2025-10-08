@@ -8,7 +8,7 @@ import { formatDate } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
 import taskService from "@/services/api/taskService";
 
-const TaskCard = ({ task, onTaskClick, onTaskUpdate }) => {
+const TaskCard = ({ task, onTaskClick, onTaskUpdate, showCheckbox = false, isSelected = false, onSelect }) => {
   const [isDragging, setIsDragging] = useState(false);
   
   const handleDragStart = (e) => {
@@ -46,10 +46,24 @@ const TaskCard = ({ task, onTaskClick, onTaskUpdate }) => {
       )}
     >
       <div className="space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <h4 className="text-sm font-medium text-slate-900 line-clamp-2">
-            {task.title}
-          </h4>
+<div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1">
+            {showCheckbox && (
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  onSelect?.();
+                }}
+                className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+            <h4 className="text-sm font-medium text-slate-900 line-clamp-2 flex-1">
+              {task.title}
+            </h4>
+          </div>
           <StatusBadge status={task.priority} type="priority" size="sm" />
         </div>
         
