@@ -7,6 +7,8 @@ import Error from "@/components/ui/Error";
 import Loading from "@/components/ui/Loading";
 import TaskCard from "@/components/organisms/TaskCard";
 import TaskDetailModal from "@/components/organisms/TaskDetailModal";
+import Modal from "@/components/molecules/Modal";
+import FormField from "@/components/molecules/FormField";
 import Select from "@/components/atoms/Select";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
@@ -17,16 +19,27 @@ import projectService from "@/services/api/projectService";
 
 const TaskBoard = () => {
   const { currentUser } = useSelector(state => state.user);
-  const [tasks, setTasks] = useState([]);
-const [projects, setProjects] = useState([]);
+const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewMode, setViewMode] = useState("board");
   const [filterProject, setFilterProject] = useState("all");
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleting, setDeleting] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    project_id: "",
+    assignee_id: "",
+    priority: "Medium",
+    status: "To Do",
+    due_date: ""
+  });
   const columns = [
     { id: "To Do", title: "To Do", color: "slate" },
     { id: "In Progress", title: "In Progress", color: "blue" },
@@ -48,6 +61,45 @@ const [projects, setProjects] = useState([]);
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+};
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.title || !formData.project_id) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    try {
+      setCreating(true);
+      await taskService.create({
+        title_c: formData.title,
+        description_c: formData.description,
+        project_id_c: parseInt(formData.project_id),
+        assignee_id_c: formData.assignee_id ? parseInt(formData.assignee_id) : null,
+        priority_c: formData.priority,
+        status_c: formData.status,
+        due_date_c: formData.due_date,
+        created_by_c: currentUser?.Id
+      });
+      toast.success("Task created successfully");
+      setShowCreateModal(false);
+      setFormData({
+        title: "",
+        description: "",
+        project_id: "",
+        assignee_id: "",
+        priority: "Medium",
+        status: "To Do",
+        due_date: ""
+      });
+      loadData();
+    } catch (error) {
+      toast.error("Failed to create task");
+    } finally {
+      setCreating(false);
     }
   };
   
@@ -233,7 +285,7 @@ const handleDeleteAll = async () => {
             </>
           )}
           
-          <Button icon="Plus">
+<Button icon="Plus" onClick={() => setShowCreateModal(true)}>
             New Task
           </Button>
         </div>
@@ -367,12 +419,109 @@ const handleDeleteAll = async () => {
         </Card>
       )}
       
-      <TaskDetailModal
+<TaskDetailModal
         isOpen={showTaskDetail}
         onClose={() => setShowTaskDetail(false)}
         task={selectedTask}
         onUpdate={loadData}
       />
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Task"
+        size="md"
+      >
+        <form onSubmit={handleCreateTask} className="p-6 space-y-4">
+          <FormField
+            label="Task Title"
+            required
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Enter task title"
+          />
+          
+          <FormField
+            label="Description"
+            type="textarea"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Enter task description"
+            rows={3}
+          />
+          
+          <FormField
+            label="Project"
+            type="select"
+            required
+            value={formData.project_id}
+            onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
+          >
+            <option value="">Select a project</option>
+            {projects.map((project) => (
+              <option key={project.Id} value={project.Id}>
+                {project.name}
+              </option>
+            ))}
+          </FormField>
+          
+          <FormField
+            label="Assignee"
+            type="select"
+            value={formData.assignee_id}
+            onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
+          >
+            <option value="">Unassigned</option>
+            {/* Users would be loaded from userService in production */}
+          </FormField>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              label="Priority"
+              type="select"
+              value={formData.priority}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </FormField>
+            
+            <FormField
+              label="Status"
+              type="select"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            >
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Review">Review</option>
+              <option value="Done">Done</option>
+            </FormField>
+          </div>
+          
+          <FormField
+            label="Due Date"
+            type="date"
+            value={formData.due_date}
+            onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+          />
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={creating}>
+              Create Task
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

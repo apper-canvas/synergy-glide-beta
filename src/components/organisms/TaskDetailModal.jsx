@@ -1,24 +1,25 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
-import Modal from "@/components/molecules/Modal";
-import Button from "@/components/atoms/Button";
-import FormField from "@/components/molecules/FormField";
-import StatusBadge from "@/components/molecules/StatusBadge";
-import Avatar from "@/components/atoms/Avatar";
-import FileUpload from "@/components/molecules/FileUpload";
 import ApperIcon from "@/components/ApperIcon";
+import Modal from "@/components/molecules/Modal";
+import StatusBadge from "@/components/molecules/StatusBadge";
+import FileUpload from "@/components/molecules/FileUpload";
+import FormField from "@/components/molecules/FormField";
+import Avatar from "@/components/atoms/Avatar";
+import Button from "@/components/atoms/Button";
 import { formatDateTime } from "@/utils/formatters";
 import { canManageTasks } from "@/utils/permissions";
 import taskService from "@/services/api/taskService";
 
 const TaskDetailModal = ({ isOpen, onClose, task, onUpdate }) => {
-  const { currentUser } = useSelector(state => state.user);
+  const { currentUser } = useSelector((state) => state.user);
   const [isEditing, setIsEditing] = useState(false);
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   
-  const canEdit = canManageTasks(currentUser?.role, task, currentUser?.Id);
+  if (!task) return null;
+const canEdit = canManageTasks(currentUser?.role, task, currentUser?.Id);
   
   const handleStatusChange = async (newStatus) => {
     try {
@@ -43,9 +44,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate }) => {
     setComment("");
   };
   
-  if (!task) return null;
-  
-  return (
+return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}

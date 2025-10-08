@@ -85,8 +85,8 @@ const projectService = {
           status_c: projectData.status_c,
           start_date_c: projectData.start_date_c,
           end_date_c: projectData.end_date_c,
-          progress_c: 0,
-          members_c: Array.isArray(projectData.members_c) ? projectData.members_c.join(',') : projectData.members_c || '',
+progress_c: 0,
+          members_c: projectData.members_c ? (Array.isArray(projectData.members_c) ? projectData.members_c.join(',') : projectData.members_c) : '',
           created_by_c: parseInt(projectData.created_by_c),
           created_at_c: new Date().toISOString(),
           updated_at_c: new Date().toISOString()
@@ -131,8 +131,8 @@ const projectService = {
       if (projectData.start_date_c !== undefined) updatePayload.start_date_c = projectData.start_date_c;
       if (projectData.end_date_c !== undefined) updatePayload.end_date_c = projectData.end_date_c;
       if (projectData.progress_c !== undefined) updatePayload.progress_c = projectData.progress_c;
-      if (projectData.members_c !== undefined) {
-        updatePayload.members_c = Array.isArray(projectData.members_c) ? projectData.members_c.join(',') : projectData.members_c;
+if (projectData.members_c !== undefined) {
+        updatePayload.members_c = projectData.members_c ? (Array.isArray(projectData.members_c) ? projectData.members_c.join(',') : projectData.members_c) : '';
       }
       updatePayload.updated_at_c = new Date().toISOString();
       
